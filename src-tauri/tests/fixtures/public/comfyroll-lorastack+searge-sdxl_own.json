@@ -1,0 +1,204 @@
+{
+ "1": {
+  "class_type": "CheckpointLoaderSimple",
+  "inputs": {
+   "ckpt_name": "harborMix_v2.safetensors"
+  }
+ },
+ "2": {
+  "class_type": "CheckpointLoaderSimple",
+  "inputs": {
+   "ckpt_name": "sd_xl_refiner_1.0.safetensors"
+  }
+ },
+ "3": {
+  "class_type": "CR LoRA Stack",
+  "inputs": {
+   "switch_1": "On",
+   "lora_name_1": "watercolorWash_v1.safetensors",
+   "model_weight_1": 1,
+   "clip_weight_1": 1,
+   "switch_2": "On",
+   "lora_name_2": "paperGrain_v3.safetensors",
+   "model_weight_2": 1,
+   "clip_weight_2": 0.5,
+   "switch_3": "Off",
+   "lora_name_3": "None",
+   "model_weight_3": 1,
+   "clip_weight_3": 1
+  }
+ },
+ "4": {
+  "class_type": "CR Apply LoRA Stack",
+  "inputs": {
+   "model": [
+    "1",
+    0
+   ],
+   "clip": [
+    "1",
+    1
+   ],
+   "lora_stack": [
+    "3",
+    0
+   ]
+  }
+ },
+ "5": {
+  "class_type": "FreeU",
+  "inputs": {
+   "b1": 1.1,
+   "b2": 1.15,
+   "s1": 0.9,
+   "s2": 0.9,
+   "model": [
+    "4",
+    0
+   ]
+  }
+ },
+ "6": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "watercolour harbour at noon, fishing boats, loose wet edges",
+   "clip": [
+    "4",
+    1
+   ]
+  }
+ },
+ "7": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "photo, hard edges, text",
+   "clip": [
+    "1",
+    1
+   ]
+  }
+ },
+ "8": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "watercolour harbour at noon, fishing boats, loose wet edges",
+   "clip": [
+    "2",
+    1
+   ]
+  }
+ },
+ "9": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "photo, hard edges, text",
+   "clip": [
+    "2",
+    1
+   ]
+  }
+ },
+ "10": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "harbour_sketch.png",
+   "upload": "image"
+  }
+ },
+ "11": {
+  "class_type": "ImageScaleToTotalPixels",
+  "inputs": {
+   "upscale_method": "bilinear",
+   "megapixels": 1,
+   "image": [
+    "10",
+    0
+   ]
+  }
+ },
+ "12": {
+  "class_type": "VAEEncode",
+  "inputs": {
+   "pixels": [
+    "11",
+    0
+   ],
+   "vae": [
+    "1",
+    2
+   ]
+  }
+ },
+ "13": {
+  "class_type": "RepeatLatentBatch",
+  "inputs": {
+   "amount": 1,
+   "samples": [
+    "12",
+    0
+   ]
+  }
+ },
+ "14": {
+  "class_type": "SeargeSDXLSampler",
+  "inputs": {
+   "noise_seed": 230948571230498,
+   "steps": 40,
+   "cfg": 8,
+   "sampler_name": "dpmpp_2m",
+   "scheduler": "karras",
+   "base_ratio": 0.8,
+   "denoise": 0.6,
+   "base_model": [
+    "5",
+    0
+   ],
+   "base_positive": [
+    "6",
+    0
+   ],
+   "base_negative": [
+    "7",
+    0
+   ],
+   "refiner_model": [
+    "2",
+    0
+   ],
+   "refiner_positive": [
+    "8",
+    0
+   ],
+   "refiner_negative": [
+    "9",
+    0
+   ],
+   "latent_image": [
+    "13",
+    0
+   ]
+  }
+ },
+ "15": {
+  "class_type": "VAEDecode",
+  "inputs": {
+   "samples": [
+    "14",
+    0
+   ],
+   "vae": [
+    "2",
+    2
+   ]
+  }
+ },
+ "16": {
+  "class_type": "PreviewImage",
+  "inputs": {
+   "images": [
+    "15",
+    0
+   ]
+  }
+ }
+}

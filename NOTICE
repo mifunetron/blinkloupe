@@ -1,0 +1,7 @@
+BlinkLoupe
+Copyright 2026 mifunetron
+
+This product includes software developed by mifunetron (https://github.com/mifunetron/blinkloupe).
+
+The test workflows in src-tauri/tests/fixtures/public marked as coming from other projects remain under their own licences
+(MIT and Apache-2.0); see src-tauri/tests/fixtures/public/SOURCES.md and the licence texts beside it.

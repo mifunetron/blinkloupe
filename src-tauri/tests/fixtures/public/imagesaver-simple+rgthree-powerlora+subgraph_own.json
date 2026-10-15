@@ -1,0 +1,220 @@
+{
+ "3": {
+  "class_type": "CLIPLoader",
+  "inputs": {
+   "clip_name": "qwen3vl_4b_fp8_scaled.safetensors",
+   "type": "krea2",
+   "device": "default"
+  }
+ },
+ "11": {
+  "class_type": "EmptyLatentImage",
+  "inputs": {
+   "width": 1024,
+   "height": 1536,
+   "batch_size": 1
+  }
+ },
+ "12": {
+  "class_type": "Seed (rgthree)",
+  "inputs": {
+   "seed": -1
+  }
+ },
+ "16": {
+  "class_type": "VAELoader",
+  "inputs": {
+   "vae_name": "qwen_image_vae.safetensors"
+  }
+ },
+ "30": {
+  "class_type": "Power Lora Loader (rgthree)",
+  "inputs": {
+   "PowerLoraLoaderHeaderWidget": {
+    "type": "PowerLoraLoaderHeaderWidget"
+   },
+   "➕ Add Lora": "",
+   "model": [
+    "68",
+    0
+   ],
+   "clip": [
+    "3",
+    0
+   ]
+  }
+ },
+ "68": {
+  "class_type": "UnetLoaderGGUF",
+  "inputs": {
+   "unet_name": "openFieldKrea2_Q4_0.gguf"
+  }
+ },
+ "119": {
+  "class_type": "PrimitiveStringMultiline",
+  "inputs": {
+   "value": ""
+  }
+ },
+ "212": {
+  "class_type": "Image Saver Simple",
+  "inputs": {
+   "filename": "",
+   "path": "",
+   "extension": "png",
+   "lossless_webp": true,
+   "quality_jpeg_or_webp": 100,
+   "optimize_png": false,
+   "embed_workflow": true,
+   "save_workflow_as_json": false,
+   "counter": 0,
+   "time_format": "%Y-%m-%d-%H%M%S",
+   "show_preview": false,
+   "images": [
+    "227",
+    0
+   ],
+   "metadata": [
+    "213",
+    0
+   ]
+  }
+ },
+ "213": {
+  "class_type": "Image Saver Metadata",
+  "inputs": {
+   "modelname": "",
+   "positive": [
+    "119",
+    0
+   ],
+   "negative": "",
+   "width": [
+    "40:21",
+    0
+   ],
+   "height": [
+    "40:21",
+    1
+   ],
+   "seed_value": [
+    "12",
+    0
+   ],
+   "steps": 9,
+   "cfg": 1,
+   "sampler_name": "",
+   "scheduler_name": "beta",
+   "denoise": 1,
+   "clip_skip": 0,
+   "additional_hashes": "",
+   "download_civitai_data": false,
+   "easy_remix": true,
+   "custom": ""
+  }
+ },
+ "227": {
+  "class_type": "ImageScaleBy",
+  "inputs": {
+   "upscale_method": "lanczos",
+   "scale_by": 1.25,
+   "image": [
+    "40:2",
+    0
+   ]
+  }
+ },
+ "229": {
+  "class_type": "PreviewImage",
+  "inputs": {
+   "images": [
+    "227",
+    0
+   ]
+  }
+ },
+ "40:9": {
+  "class_type": "ConditioningZeroOut",
+  "inputs": {
+   "conditioning": [
+    "40:8",
+    0
+   ]
+  }
+ },
+ "40:5": {
+  "class_type": "ModelSamplingAuraFlow",
+  "inputs": {
+   "shift": 3,
+   "model": [
+    "30",
+    0
+   ]
+  }
+ },
+ "40:2": {
+  "class_type": "VAEDecode",
+  "inputs": {
+   "samples": [
+    "40:6",
+    0
+   ],
+   "vae": [
+    "16",
+    0
+   ]
+  }
+ },
+ "40:21": {
+  "class_type": "GetImageSize",
+  "inputs": {
+   "image": [
+    "40:2",
+    0
+   ]
+  }
+ },
+ "40:6": {
+  "class_type": "KSampler",
+  "inputs": {
+   "seed": [
+    "12",
+    0
+   ],
+   "steps": 9,
+   "cfg": 1,
+   "sampler_name": "euler",
+   "scheduler": "beta",
+   "denoise": 1,
+   "model": [
+    "40:5",
+    0
+   ],
+   "positive": [
+    "40:8",
+    0
+   ],
+   "negative": [
+    "40:9",
+    0
+   ],
+   "latent_image": [
+    "11",
+    0
+   ]
+  }
+ },
+ "40:8": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": [
+    "119",
+    0
+   ],
+   "clip": [
+    "30",
+    1
+   ]
+  }
+ }
+}

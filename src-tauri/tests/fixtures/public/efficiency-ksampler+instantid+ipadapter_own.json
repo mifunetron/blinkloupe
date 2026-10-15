@@ -1,0 +1,198 @@
+{
+ "1": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "reference_face.png",
+   "upload": "image"
+  }
+ },
+ "2": {
+  "class_type": "LoRA Stacker",
+  "inputs": {
+   "input_mode": "simple",
+   "lora_count": 3,
+   "lora_name_1": "artist/linocutPrint_v1.safetensors",
+   "lora_wt_1": 1,
+   "model_str_1": 1,
+   "clip_str_1": 1,
+   "lora_name_2": "None",
+   "lora_wt_2": 1,
+   "model_str_2": 1,
+   "clip_str_2": 1,
+   "lora_name_3": "None",
+   "lora_wt_3": 1,
+   "model_str_3": 1,
+   "clip_str_3": 1
+  }
+ },
+ "3": {
+  "class_type": "Efficient Loader",
+  "inputs": {
+   "ckpt_name": "crispSketchXL_v2.safetensors",
+   "vae_name": "Baked VAE",
+   "clip_skip": -1,
+   "lora_name": "None",
+   "lora_model_strength": 1,
+   "lora_clip_strength": 1,
+   "positive": "Linocut portrait, bold carved lines, two-colour print, cream paper",
+   "negative": "photo, soft focus, gradients, text",
+   "token_normalization": "none",
+   "weight_interpretation": "comfy",
+   "empty_latent_width": 1024,
+   "empty_latent_height": 1024,
+   "batch_size": 1,
+   "lora_stack": [
+    "2",
+    0
+   ]
+  }
+ },
+ "4": {
+  "class_type": "InstantIDModelLoader",
+  "inputs": {
+   "instantid_file": "instantid-adapter.bin"
+  }
+ },
+ "5": {
+  "class_type": "InstantIDFaceAnalysis",
+  "inputs": {
+   "provider": "CPU"
+  }
+ },
+ "6": {
+  "class_type": "ControlNetLoader",
+  "inputs": {
+   "control_net_name": "instantid-controlnet.safetensors"
+  }
+ },
+ "7": {
+  "class_type": "ApplyInstantID",
+  "inputs": {
+   "weight": 0.8,
+   "start_at": 0,
+   "end_at": 1,
+   "instantid": [
+    "4",
+    0
+   ],
+   "insightface": [
+    "5",
+    0
+   ],
+   "control_net": [
+    "6",
+    0
+   ],
+   "image": [
+    "1",
+    0
+   ],
+   "model": [
+    "3",
+    0
+   ],
+   "positive": [
+    "3",
+    1
+   ],
+   "negative": [
+    "3",
+    2
+   ]
+  }
+ },
+ "8": {
+  "class_type": "IPAdapterModelLoader",
+  "inputs": {
+   "ipadapter_file": "ip-adapter-faceid_sdxl.bin"
+  }
+ },
+ "9": {
+  "class_type": "CLIPVisionLoader",
+  "inputs": {
+   "clip_name": "clip-vision-h.safetensors"
+  }
+ },
+ "10": {
+  "class_type": "InsightFaceLoader",
+  "inputs": {
+   "provider": "CPU"
+  }
+ },
+ "11": {
+  "class_type": "IPAdapterApplyFaceID",
+  "inputs": {
+   "weight": 0.3,
+   "noise": 0.4,
+   "weight_type": "original",
+   "start_at": 0,
+   "end_at": 0.3,
+   "faceid_v2": false,
+   "weight_v2": 0.5,
+   "unfold_batch": false,
+   "ipadapter": [
+    "8",
+    0
+   ],
+   "clip_vision": [
+    "9",
+    0
+   ],
+   "insightface": [
+    "10",
+    0
+   ],
+   "image": [
+    "1",
+    0
+   ],
+   "model": [
+    "7",
+    0
+   ]
+  }
+ },
+ "12": {
+  "class_type": "KSampler (Efficient)",
+  "inputs": {
+   "seed": 41720394857712,
+   "steps": 24,
+   "cfg": 6,
+   "sampler_name": "dpmpp_2m",
+   "scheduler": "karras",
+   "denoise": 1,
+   "preview_method": "none",
+   "vae_decode": "true",
+   "model": [
+    "11",
+    0
+   ],
+   "positive": [
+    "7",
+    1
+   ],
+   "negative": [
+    "7",
+    2
+   ],
+   "latent_image": [
+    "3",
+    3
+   ],
+   "optional_vae": [
+    "3",
+    4
+   ]
+  }
+ },
+ "13": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "filename_prefix": "linocut",
+   "images": [
+    "12",
+    5
+   ]
+  }
+ }
+}

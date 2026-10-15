@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blink · BlinkLoupe</title>
+<link rel="icon" type="image/png" sizes="256x256" href="/icon-256.png">
+<link rel="icon" href="/favicon.ico" sizes="16x16 24x24 32x32 48x48 64x64">
+<style>
+:root {
+  --bg: #111214; --panel: #191b1f; --panel2: #202329; --line: #2c3038; --text: #e6e8eb; --dim: #9aa1ab; --faint: #6b727c;
+  --accent: #6aa8ff; --a: #ffb44d; --b: #5fd3c6; --bad: #ff6b7a; --good: #7bd88f; --hl: #3a2f16;
+  font: 13px/1.4 "Segoe UI", system-ui, sans-serif; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); overflow: hidden; }
+button, input, select { font: inherit; color: inherit; }
+#app { display: grid; grid-template-columns: 290px 1fr 330px; height: 100vh; }
+#app.noside { grid-template-columns: 0 1fr 330px; }
+#app.noinfo { grid-template-columns: 290px 1fr 0; }
+#app.noside.noinfo { grid-template-columns: 0 1fr 0; }
+aside { background: var(--panel); overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+#side { border-right: 1px solid var(--line); }
+#info { border-left: 1px solid var(--line); overflow-y: auto; padding: 10px 12px 30px; }
+#side .top { padding: 10px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+#search { width: 100%; padding: 6px 8px; background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { padding: 2px 8px; border: 1px solid var(--line); border-radius: 10px; background: transparent; cursor: pointer; color: var(--dim); }
+.chip.on { background: var(--accent); border-color: var(--accent); color: #0b1220; }
+#list { overflow-y: auto; flex: 1; }
+.fh { position: sticky; top: 0; background: var(--panel); padding: 6px 10px 3px; color: var(--faint); font-size: 11px; text-transform: uppercase;
+      letter-spacing: .04em; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gi { padding: 5px 10px 5px 14px; cursor: pointer; display: flex; gap: 6px; align-items: baseline; }
+.gi:hover { background: var(--panel2); }
+.gi.cur { background: #24324a; }
+.gi .t { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gi .n { color: var(--faint); font-size: 11px; }
+.kind { font-size: 10px; padding: 0 5px; border-radius: 4px; background: var(--panel2); color: var(--dim); }
+.fl { padding: 4px 10px 4px 14px; display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.fl:hover { background: var(--panel2); }
+.fl input { margin: 0; }
+#folderbar { padding: 8px 10px; border-top: 1px solid var(--line); display: none; gap: 6px; }
+#folderbar button { flex: 1; }
+main { display: grid; grid-template-rows: auto 1fr auto; min-width: 0; min-height: 0; }
+#bar { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 6px 10px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { background: transparent; border: 0; padding: 4px 9px; cursor: pointer; color: var(--dim); border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: var(--accent); color: #0b1220; }
+.seg button kbd { opacity: .55; font-size: 10px; margin-right: 3px; }
+.ctl { display: none; gap: 6px; align-items: center; color: var(--dim); }
+.ctl.on { display: flex; }
+.ctl input[type=range] { width: 110px; }
+.ctl select, .btn { background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 3px 7px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+#zoominfo { margin-left: auto; color: var(--faint); font-variant-numeric: tabular-nums; }
+#stage { position: relative; overflow: hidden; background: #0b0c0e; cursor: grab; min-height: 0; }
+#stage.drag { cursor: grabbing; }
+#cv { position: absolute; inset: 0; width: 100%; height: 100%; }
+#mag { position: absolute; display: none; pointer-events: none; gap: 6px; padding: 6px; background: rgba(10,11,13,.92); border: 1px solid var(--line); border-radius: 8px; }
+#mag canvas { width: 176px; height: 176px; image-rendering: pixelated; border: 1px solid var(--line); }
+#mag .cap { font-size: 10px; color: var(--dim); text-align: center; margin-top: 2px; }
+.note2 { padding: 8px 10px; margin: 4px 6px; border-left: 3px solid var(--a); color: var(--text); font-size: 13px; line-height: 1.35; }
+#empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); text-align: center; padding: 40px; pointer-events: none; }
+#dropzone { position: absolute; inset: 12px; border: 2px dashed var(--accent); border-radius: 12px; display: none; place-items: center;
+            font-size: 18px; color: var(--accent); background: rgba(16,24,40,.75); pointer-events: none; }
+#busy { position: absolute; right: 12px; bottom: 10px; color: var(--dim); font-size: 12px; display: none; background: rgba(10,11,13,.8); padding: 3px 8px; border-radius: 5px; }
+#strip { display: flex; gap: 8px; padding: 8px 10px; background: var(--panel); border-top: 1px solid var(--line); overflow-x: auto; min-height: 112px; }
+.mem { flex: none; width: 150px; cursor: pointer; border: 2px solid transparent; border-radius: 7px; padding: 4px; background: var(--panel2); position: relative; }
+.mem canvas { width: 100%; height: 66px; object-fit: contain; display: block; background: #0b0c0e; border-radius: 4px; }
+.mem .l { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+.mem .s { font-size: 10px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mem.isA { border-color: var(--a); }
+.mem.isB { border-color: var(--b); }
+.badge { position: absolute; top: 6px; left: 8px; font-weight: 700; font-size: 11px; padding: 0 5px; border-radius: 4px; color: #111; }
+.badge.a { background: var(--a); } .badge.b { background: var(--b); }
+h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--faint); margin: 16px 0 6px; font-weight: 600; }
+h3:first-child { margin-top: 4px; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+td { padding: 3px 4px; border-bottom: 1px solid var(--line); vertical-align: top; word-break: break-word; }
+td:first-child { color: var(--dim); white-space: nowrap; width: 1%; }
+tr.diff td { background: var(--hl); }
+.ta { color: var(--a); } .tb { color: var(--b); }
+.who { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; }
+.who .p { color: var(--faint); font-size: 11px; word-break: break-all; }
+.note { color: var(--dim); font-size: 12px; margin-top: 6px; }
+details { margin-top: 6px; }
+summary { cursor: pointer; color: var(--dim); }
+pre { white-space: pre-wrap; word-break: break-word; font: 11px/1.45 Consolas, monospace; background: var(--panel2); padding: 6px; border-radius: 5px; max-height: 240px; overflow: auto; margin: 4px 0; }
+#hist { width: 100%; height: 90px; background: var(--panel2); border-radius: 5px; }
+.legend { font-size: 11px; color: var(--faint); }
+#help { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; place-items: center; z-index: 10; }
+#help .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px 22px; max-width: 760px; columns: 2; column-gap: 28px; }
+#help .box h2 { column-span: all; margin: 0 0 10px; font-size: 16px; }
+#help .row { break-inside: avoid; display: flex; gap: 10px; padding: 2px 0; }
+#help kbd, .k { display: inline-block; min-width: 22px; text-align: center; padding: 0 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--panel2); font: 11px Consolas, monospace; }
+#help .row span:last-child { color: var(--dim); }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="side">
+    <div class="top">
+      <input id="search" placeholder="Search groups and folders  ( / )" autocomplete="off">
+      <div class="chips" id="chips"></div>
+    </div>
+    <div id="list"></div>
+    <div id="folderbar"><button class="btn" id="cmpChecked">Compare checked</button><button class="btn" id="upDir">Up</button></div>
+  </aside>
+  <main>
+    <div id="bar">
+      <div class="seg" id="modes"></div>
+      <div class="ctl" data-for="slider"><label><input type="checkbox" id="sliderLock"> lock divider <span class="k">L</span></label></div>
+      <div class="ctl" data-for="flicker"><label><input type="checkbox" id="blink"> auto-blink <span class="k">B</span></label>
+        <input type="range" id="blinkMs" min="150" max="1500" step="50" value="500"><span id="blinkMsV">500 ms</span></div>
+      <div class="ctl" data-for="diff">
+        <select id="dmode"><option value="heat">heat map</option><option value="gray">grey</option><option value="signed">brighter / darker</option><option value="thresh">changed pixels</option></select>
+        gain <input type="range" id="gain" min="1" max="32" step="1" value="4"><span id="gainV">4x</span>
+        <span id="thrBox">threshold <input type="range" id="thr" min="1" max="64" step="1" value="8"><span id="thrV">8</span></span></div>
+      <div class="ctl" data-for="onion">B opacity <input type="range" id="opacity" min="0" max="1" step="0.01" value="0.5"><span id="opacityV">50%</span></div>
+      <div class="ctl" data-for="ssim">gain <input type="range" id="sgain" min="1" max="20" step="1" value="4"><span id="sgainV">4x</span></div>
+      <span id="zoominfo"></span>
+      <button class="btn" id="helpBtn" title="Keys (?)">?</button>
+    </div>
+    <div id="stage">
+      <canvas id="cv"></canvas>
+      <div id="empty"><div>Pick a group on the left, or drop two or more images here.<br><br>In BlinkLoupe's live view, <span class="k">V</span> opens this window on the frame on screen.<br>Press <span class="k">?</span> for the keys.</div></div>
+      <div id="mag"></div>
+      <div id="dropzone">Drop images to compare them</div>
+      <div id="busy">measuring…</div>
+    </div>
+    <div id="strip"></div>
+  </main>
+  <aside id="info"></aside>
+</div>
+<div id="help"><div class="box">
+  <h2>Blink: keys</h2>
+  <p style="color:var(--dim);margin:0 0 10px">Blink finds, in the folders BlinkLoupe watches: <b>versions</b> of a frame (its re-rolls, what Send to a workflow made from it, hires, in its folder or a folder named after it such as <i>set-hires</i>) and <b>A/B folders</b> (sibling folders holding the same file names: a restyle, a bench, an A/B test). <b>Folders</b> lets you tick any images; you can also drop files on the window.</p>
+  <div class="row"><span><kbd>1</kbd>–<kbd>7</kbd></span><span>side by side, slider, flicker, difference, onion skin, SSIM map, grid</span></div>
+  <div class="row"><span><kbd>Space</kbd></span><span>swap A and B (in flicker, this is the flick)</span></div>
+  <div class="row"><span><kbd>←</kbd> <kbd>→</kbd></span><span>B = previous / next image in the group</span></div>
+  <div class="row"><span><kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd></span><span>A = previous / next image</span></div>
+  <div class="row"><span><kbd>↑</kbd> <kbd>↓</kbd></span><span>previous / next group</span></div>
+  <div class="row"><span>click / right-click</span><span>on a thumbnail: make it A / B</span></div>
+  <div class="row"><span>wheel, drag</span><span>zoom at the cursor, pan (all panes move together)</span></div>
+  <div class="row"><span><kbd>F</kbd> <kbd>Z</kbd></span><span>fit / actual pixels (100%)</span></div>
+  <div class="row"><span><kbd>+</kbd> <kbd>-</kbd></span><span>zoom in / out</span></div>
+  <div class="row"><span><kbd>M</kbd></span><span>magnifier: A, B and their difference under the cursor</span></div>
+  <div class="row"><span><kbd>P</kbd></span><span>sharp pixels when zoomed in (on / off)</span></div>
+  <div class="row"><span><kbd>L</kbd></span><span>slider: lock / unlock the divider</span></div>
+  <div class="row"><span><kbd>B</kbd></span><span>flicker: auto-blink on / off</span></div>
+  <div class="row"><span><kbd>[</kbd> <kbd>]</kbd></span><span>difference / SSIM gain down / up</span></div>
+  <div class="row"><span><kbd>/</kbd></span><span>search</span></div>
+  <div class="row"><span><kbd>Tab</kbd> <kbd>I</kbd></span><span>hide the group list / the numbers panel</span></div>
+  <div class="row"><span><kbd>R</kbd></span><span>look again for new images</span></div>
+  <div class="row"><span><kbd>?</kbd> <kbd>Esc</kbd></span><span>this help / close it</span></div>
+</div></div>
+<script>
+"use strict";
+// ---------------------------------------------------------------- state
+const MODES = [["side", "side by side"], ["slider", "slider"], ["flicker", "flicker"], ["diff", "difference"], ["onion", "onion skin"],
+               ["ssim", "SSIM map"], ["grid", "grid"]];
+const KINDS = [["all", "All"], ["versions", "Versions"], ["parallel", "A/B folders"], ["folders", "Folders"]];
+const S = {
+  data: null, kind: "all", query: "", list: [], gi: -1, group: null, members: [], a: 0, b: 1,
+  mode: localGet("mode", "slider"), view: { s: 1, x: 0, y: 0 }, fitted: true, pixel: true,
+  gain: 4, dmode: "heat", thr: 8, opacity: 0.5, sgain: 4, blink: false, blinkMs: 500, slider: 0.5, sliderLock: false,
+  mag: false, mouse: null, dir: "", up: "", note: "", checked: new Map(), metrics: null, token: 0,
+};
+const $ = (id) => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+function localGet(k, d) { try { return localStorage.getItem("cmp." + k) || d; } catch (e) { return d; } }
+function localSet(k, v) { try { localStorage.setItem("cmp." + k, v); } catch (e) {} }
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmtBytes = (n) => n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : (n / 1024).toFixed(0) + " KB";
+
+// ---------------------------------------------------------------- colour map (inferno-like) for heat views
+const LUT = (() => {
+  const stops = [[0, 0, 0, 4], [.15, 31, 12, 72], [.3, 85, 15, 109], [.45, 136, 34, 106], [.6, 186, 54, 85], [.72, 227, 89, 51],
+                 [.84, 249, 140, 10], [.93, 249, 201, 50], [1, 252, 255, 164]];
+  const t = new Uint8ClampedArray(256 * 3);
+  for (let i = 0; i < 256; i++) {
+    const v = i / 255; let k = 0; while (k < stops.length - 2 && v > stops[k + 1][0]) k++;
+    const [p0, r0, g0, b0] = stops[k], [p1, r1, g1, b1] = stops[k + 1], f = (v - p0) / (p1 - p0);
+    t[i * 3] = r0 + (r1 - r0) * f; t[i * 3 + 1] = g0 + (g1 - g0) * f; t[i * 3 + 2] = b0 + (b1 - b0) * f;
+  }
+  return t;
+})();
+
+// ---------------------------------------------------------------- PNG text chunks (ComfyUI's prompt graph, A1111 parameters)
+async function inflate(u8) {
+  const ds = new DecompressionStream("deflate");
+  const out = await new Response(new Blob([u8]).stream().pipeThrough(ds)).arrayBuffer();
+  return new TextDecoder("utf-8").decode(out);
+}
+async function pngMeta(buf) {
+  const u8 = new Uint8Array(buf), dv = new DataView(buf), out = {};
+  if (u8.length < 8 || u8[0] !== 0x89 || u8[1] !== 0x50) return out;
+  const lat = new TextDecoder("latin1"), utf = new TextDecoder("utf-8");
+  let p = 8;
+  while (p + 12 <= u8.length) {
+    const len = dv.getUint32(p), type = lat.decode(u8.subarray(p + 4, p + 8)), d = u8.subarray(p + 8, p + 8 + len);
+    try {
+      if (type === "tEXt") { const z = d.indexOf(0); out[lat.decode(d.subarray(0, z))] = utf.decode(d.subarray(z + 1)); }
+      else if (type === "zTXt") { const z = d.indexOf(0); out[lat.decode(d.subarray(0, z))] = await inflate(d.subarray(z + 2)); }
+      else if (type === "iTXt") {
+        const z = d.indexOf(0), key = lat.decode(d.subarray(0, z)), comp = d[z + 1];
+        let q = z + 3; q = d.indexOf(0, q) + 1; q = d.indexOf(0, q) + 1;
+        out[key] = comp ? await inflate(d.subarray(q)) : utf.decode(d.subarray(q));
+      } else if (type === "IEND") break;
+    } catch (e) { /* a broken chunk only loses that chunk */ }
+    p += 12 + len;
+  }
+  return out;
+}
+
+const SAMPLERS = /^(KSampler|KSamplerAdvanced|SamplerCustom|SamplerCustomAdvanced|KSamplerSelect|BasicScheduler)$/;
+function settingsOf(meta) {
+  const r = {};
+  let g = null;
+  try { g = meta.prompt ? JSON.parse(meta.prompt) : null; } catch (e) {}
+  if (g) {
+    const nodes = Object.values(g), val = (v) => (Array.isArray(v) ? null : v);
+    const loras = [], models = [], prompts = [];
+    for (const n of nodes) {
+      const c = n.class_type || "", i = n.inputs || {};
+      if (/Lora/i.test(c) && i.lora_name) loras.push(i.lora_name.replace(/^.*[\\/]/, "").replace(/\.safetensors$/, "") + " " + (+(i.strength_model ?? i.strength ?? 1)).toFixed(2));
+      if (i.unet_name) models.push(i.unet_name); if (i.ckpt_name) models.push(i.ckpt_name);
+      if (c === "ModelComputeDtype") r["Compute dtype"] = i.dtype;
+      if (/^CLIPTextEncode/.test(c) && typeof i.text === "string" && i.text.trim()) prompts.push(i.text);
+      if (c === "EmptyLatentImage" || c === "EmptySD3LatentImage") r["Latent size"] = i.width + " x " + i.height;
+      if (c === "VAELoader") r["VAE"] = i.vae_name;
+      if (/^(LoadImage|LoadImageOutput)$/.test(c)) r["Input image"] = String(i.image).replace(/ \[output\]$/, "");
+      if (/^ImageScale/.test(c) && i.width) r["Resize to"] = i.width + " x " + i.height;
+      if (/^ImageScaleBy$/.test(c)) r["Resize by"] = i.scale_by + "x " + (i.upscale_method || "");
+      if (/^UpscaleModelLoader$/.test(c)) r["Upscale model"] = i.model_name;
+      if (SAMPLERS.test(c)) {
+        for (const [k, name] of [["sampler_name", "Sampler"], ["scheduler", "Scheduler"], ["steps", "Steps"], ["cfg", "CFG"],
+                                 ["denoise", "Denoise"], ["seed", "Seed"], ["noise_seed", "Seed"]]) {
+          const v = val(i[k]); if (v !== null && v !== undefined) r[name] = v;
+        }
+      }
+    }
+    if (models.length) r["Model"] = models.join(", ");
+    r["LoRAs"] = loras.length ? loras.join("\n") : "none";
+    if (prompts.length) r["Prompt"] = prompts[0];
+  } else if (meta.parameters) {
+    const t = meta.parameters, m = t.split(/\n(?=Steps: )/);
+    if (m.length > 1) r["Prompt"] = m[0].replace(/\nNegative prompt:[\s\S]*$/, "");
+    for (const kv of (m[1] || "").split(/,\s*(?=[A-Z][\w ]*: )/)) {
+      const j = kv.indexOf(": "); if (j > 0) r[kv.slice(0, j)] = kv.slice(j + 2);
+    }
+  }
+  return { rows: r, graph: g };
+}
+function flatGraph(g) {
+  const out = {}, seen = {};
+  if (!g) return out;
+  for (const n of Object.values(g)) {
+    const c = n.class_type || "?"; seen[c] = (seen[c] || 0) + 1;
+    const tag = seen[c] > 1 ? c + "#" + seen[c] : c;
+    for (const [k, v] of Object.entries(n.inputs || {})) if (!Array.isArray(v) && typeof v !== "object") out[tag + "." + k] = v;
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- loading images
+const cache = new Map();   // key -> member data (bitmap, meta) so flipping between groups does not reload
+async function loadMember(m) {
+  const key = m.file ? "file:" + m.file.name + ":" + m.file.size + ":" + m.file.lastModified : "path:" + m.path;
+  if (cache.has(key)) return Object.assign(m, cache.get(key));
+  const buf = m.file ? await m.file.arrayBuffer() : await (await fetch("/img?p=" + encodeURIComponent(m.path))).arrayBuffer();
+  const meta = await pngMeta(buf);
+  const bmp = await createImageBitmap(new Blob([buf]), { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+  const d = { bmp, w: bmp.width, h: bmp.height, bytes: buf.byteLength, meta, set: settingsOf(meta), aligned: {} };
+  cache.set(key, d);
+  if (cache.size > 40) cache.delete(cache.keys().next().value);
+  return Object.assign(m, d);
+}
+// the comparison size: the larger of A and B; the smaller one is resampled up to it (high-quality smoothing)
+function target() {
+  const A = S.members[S.a], B = S.members[S.b];
+  if (!A || !A.bmp) return null;
+  if (!B || !B.bmp) return { w: A.w, h: A.h };
+  return A.w * A.h >= B.w * B.h ? { w: A.w, h: A.h } : { w: B.w, h: B.h };
+}
+function aligned(m, T) {
+  const k = T.w + "x" + T.h;
+  if (m.aligned[k]) return m.aligned[k];
+  const c = document.createElement("canvas"); c.width = T.w; c.height = T.h;
+  const x = c.getContext("2d", { willReadFrequently: true });
+  x.imageSmoothingEnabled = true; x.imageSmoothingQuality = "high";
+  x.drawImage(m.bmp, 0, 0, T.w, T.h);
+  m.aligned[k] = { canvas: c, ctx: x, data: null };
+  return m.aligned[k];
+}
+function pixels(m, T) { const al = aligned(m, T); if (!al.data) al.data = al.ctx.getImageData(0, 0, T.w, T.h).data; return al.data; }
+
+// ---------------------------------------------------------------- derived images: difference, SSIM map
+const derived = { key: "", canvas: null };
+function diffCanvas(T) {
+  const A = S.members[S.a], B = S.members[S.b];
+  const key = ["d", A.path || A.label, B.path || B.label, T.w, T.h, S.dmode, S.gain, S.thr].join("|");
+  if (derived.key === key) return derived.canvas;
+  const pa = pixels(A, T), pb = pixels(B, T), n = T.w * T.h, img = new ImageData(T.w, T.h), o = img.data, g = S.gain, thr = S.thr;
+  for (let i = 0, j = 0; i < n; i++, j += 4) {
+    const dr = pa[j] - pb[j], dg = pa[j + 1] - pb[j + 1], db = pa[j + 2] - pb[j + 2];
+    if (S.dmode === "signed") {
+      const dl = (0.299 * (pb[j] - pa[j]) + 0.587 * (pb[j + 1] - pa[j + 1]) + 0.114 * (pb[j + 2] - pa[j + 2])) * g;
+      o[j] = dl > 0 ? Math.min(255, dl * 2) : 0; o[j + 1] = Math.min(255, Math.abs(dl) * 0.6); o[j + 2] = dl < 0 ? Math.min(255, -dl * 2) : 0;
+    } else {
+      const d = Math.max(Math.abs(dr), Math.abs(dg), Math.abs(db));
+      if (S.dmode === "thresh") {
+        if (d > thr) { o[j] = 255; o[j + 1] = 40; o[j + 2] = 200; }
+        else { o[j] = pa[j] * 0.3; o[j + 1] = pa[j + 1] * 0.3; o[j + 2] = pa[j + 2] * 0.3; }
+      } else {
+        const v = Math.min(255, d * g) | 0;
+        if (S.dmode === "gray") { o[j] = o[j + 1] = o[j + 2] = v; }
+        else { o[j] = LUT[v * 3]; o[j + 1] = LUT[v * 3 + 1]; o[j + 2] = LUT[v * 3 + 2]; }
+      }
+    }
+    o[j + 3] = 255;
+  }
+  return putDerived(key, img);
+}
+function ssimCanvas(T) {
+  const M = S.metrics;
+  if (!M || !M.ssimMap || M.T.w !== T.w || M.T.h !== T.h) return null;
+  const key = ["s", M.key, S.sgain].join("|");
+  if (derived.key === key) return derived.canvas;
+  const img = new ImageData(T.w, T.h), o = img.data, m = M.ssimMap, g = S.sgain;
+  for (let i = 0, j = 0; i < m.length; i++, j += 4) {
+    const v = Math.max(0, Math.min(255, (1 - m[i]) * 255 * g)) | 0;
+    o[j] = LUT[v * 3]; o[j + 1] = LUT[v * 3 + 1]; o[j + 2] = LUT[v * 3 + 2]; o[j + 3] = 255;
+  }
+  return putDerived(key, img);
+}
+function putDerived(key, img) {
+  const c = derived.canvas && derived.canvas.width === img.width && derived.canvas.height === img.height ? derived.canvas : document.createElement("canvas");
+  c.width = img.width; c.height = img.height; c.getContext("2d").putImageData(img, 0, 0);
+  derived.key = key; derived.canvas = c; return c;
+}
+
+// ---------------------------------------------------------------- measurements (async, so the view stays responsive)
+const tick = () => new Promise((r) => setTimeout(r, 0));
+async function measure() {
+  const A = S.members[S.a], B = S.members[S.b], T = target(), token = ++S.token;
+  S.metrics = null; renderInfo();
+  if (!A || !B || !A.bmp || !B.bmp || S.a === S.b) return;
+  $("busy").style.display = "block";
+  await tick();
+  const key = [A.path || A.label, B.path || B.label, T.w, T.h].join("|");
+  const pa = pixels(A, T), pb = pixels(B, T), W = T.w, H = T.h, n = W * H;
+  const ya = new Float32Array(n), yb = new Float32Array(n);
+  let se = 0, sa = 0, mx = 0, changed = 0;
+  const ha = new Uint32Array(768), hb = new Uint32Array(768);
+  for (let i = 0, j = 0; i < n; i++, j += 4) {
+    let dmax = 0;
+    for (let c = 0; c < 3; c++) {
+      const d = pa[j + c] - pb[j + c], ad = d < 0 ? -d : d; se += d * d; sa += ad; if (ad > dmax) dmax = ad;
+      ha[c * 256 + pa[j + c]]++; hb[c * 256 + pb[j + c]]++;
+    }
+    if (dmax > mx) mx = dmax; if (dmax > S.thr) changed++;
+    ya[i] = 0.299 * pa[j] + 0.587 * pa[j + 1] + 0.114 * pa[j + 2];
+    yb[i] = 0.299 * pb[j] + 0.587 * pb[j + 1] + 0.114 * pb[j + 2];
+  }
+  const mse = se / (n * 3), M = { key, T, mae: sa / (n * 3), rmse: Math.sqrt(mse), psnr: mse === 0 ? Infinity : 10 * Math.log10(255 * 255 / mse),
+                                 max: mx, changed: changed / n, thrAt: S.thr, ha, hb };
+  // detail: variance of the Laplacian of luminance (higher = more fine detail / noise); mean and spread of luminance
+  for (const [y, tag] of [[ya, "A"], [yb, "B"]]) {
+    let s = 0, s2 = 0, ls = 0, ls2 = 0, cnt = 0;
+    for (let i = 0; i < n; i++) { s += y[i]; s2 += y[i] * y[i]; }
+    for (let yy = 1; yy < H - 1; yy++) for (let x = 1, i = yy * W + 1; x < W - 1; x++, i++) {
+      const l = 4 * y[i] - y[i - 1] - y[i + 1] - y[i - W] - y[i + W]; ls += l; ls2 += l * l; cnt++;
+    }
+    M["mean" + tag] = s / n; M["std" + tag] = Math.sqrt(Math.max(0, s2 / n - (s / n) ** 2));
+    M["lap" + tag] = ls2 / cnt - (ls / cnt) ** 2;
+  }
+  if (token !== S.token) return;
+  // SSIM on luminance, 7x7 box window (Wang et al.'s constants), as a per-pixel map plus its mean; vertical running sums per column,
+  // horizontal running sums per row, so memory stays at a few rows however large the image
+  const r = 3, C1 = (0.01 * 255) ** 2, C2 = (0.03 * 255) ** 2, map = new Float32Array(n);
+  const cA = new Float64Array(W), cB = new Float64Array(W), cAA = new Float64Array(W), cBB = new Float64Array(W), cAB = new Float64Array(W);
+  const addRow = (yy, sign) => { const o = yy * W; for (let x = 0; x < W; x++) { const a = ya[o + x], b = yb[o + x];
+    cA[x] += sign * a; cB[x] += sign * b; cAA[x] += sign * a * a; cBB[x] += sign * b * b; cAB[x] += sign * a * b; } };
+  for (let yy = 0; yy < Math.min(r, H); yy++) addRow(yy, 1);
+  let total = 0;
+  for (let yy = 0; yy < H; yy++) {
+    if (yy + r < H) addRow(yy + r, 1);
+    if (yy - r - 1 >= 0) addRow(yy - r - 1, -1);
+    const rows = Math.min(H - 1, yy + r) - Math.max(0, yy - r) + 1;
+    let hA = 0, hB = 0, hAA = 0, hBB = 0, hAB = 0;
+    for (let x = 0; x < Math.min(r, W); x++) { hA += cA[x]; hB += cB[x]; hAA += cAA[x]; hBB += cBB[x]; hAB += cAB[x]; }
+    for (let x = 0; x < W; x++) {
+      if (x + r < W) { const k = x + r; hA += cA[k]; hB += cB[k]; hAA += cAA[k]; hBB += cBB[k]; hAB += cAB[k]; }
+      if (x - r - 1 >= 0) { const k = x - r - 1; hA -= cA[k]; hB -= cB[k]; hAA -= cAA[k]; hBB -= cBB[k]; hAB -= cAB[k]; }
+      const N = rows * (Math.min(W - 1, x + r) - Math.max(0, x - r) + 1);
+      const ma = hA / N, mb = hB / N, va = hAA / N - ma * ma, vb = hBB / N - mb * mb, cov = hAB / N - ma * mb;
+      const v = ((2 * ma * mb + C1) * (2 * cov + C2)) / ((ma * ma + mb * mb + C1) * (va + vb + C2));
+      map[yy * W + x] = v; total += v;
+    }
+    if ((yy & 63) === 63) { await tick(); if (token !== S.token) return; }
+  }
+  M.ssim = total / n; M.ssimMap = map;
+  S.metrics = M; $("busy").style.display = "none";
+  renderInfo(); if (S.mode === "ssim") draw();
+}
+
+// ---------------------------------------------------------------- view transform and drawing
+function panes() {
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if (S.mode === "side") return [{ x: 0, y: 0, w: W / 2, h: H, m: S.a, tag: "A" }, { x: W / 2, y: 0, w: W / 2, h: H, m: S.b, tag: "B" }];
+  if (S.mode === "grid") {
+    const k = S.members.length, cols = Math.ceil(Math.sqrt(k * W / H / 1.4)) || 1, rows = Math.ceil(k / cols), pw = W / cols, ph = H / rows;
+    return S.members.map((_, i) => ({ x: (i % cols) * pw, y: Math.floor(i / cols) * ph, w: pw, h: ph, m: i, tag: i === S.a ? "A" : i === S.b ? "B" : "" }));
+  }
+  return [{ x: 0, y: 0, w: W, h: H, m: null }];
+}
+function fit() {
+  const T = target(); if (!T) return;
+  const p = panes()[0], s = Math.min(p.w / T.w, p.h / T.h) * 0.98;
+  S.view = { s, x: (p.w - T.w * s) / 2, y: (p.h - T.h * s) / 2 }; S.fitted = true;
+}
+function actual() {
+  const T = target(); if (!T) return;
+  const p = panes()[0], cx = S.mouse ? S.mouse.px : p.w / 2, cy = S.mouse ? S.mouse.py : p.h / 2;
+  zoomAt(cx, cy, (1 / devicePixelRatio) / S.view.s);
+}
+function zoomAt(px, py, f) {
+  const v = S.view, ns = Math.max(0.02, Math.min(64, v.s * f)); f = ns / v.s;
+  v.x = px - (px - v.x) * f; v.y = py - (py - v.y) * f; v.s = ns; S.fitted = false; draw();
+}
+function sizeCanvas() {
+  const dpr = devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function label(x, y, text, color, right) {
+  ctx.font = "600 12px Segoe UI, sans-serif";
+  const w = ctx.measureText(text).width + 12;
+  const lx = right ? x - w : x;
+  ctx.fillStyle = "rgba(10,11,13,.78)"; ctx.fillRect(lx, y, w, 20);
+  ctx.fillStyle = color; ctx.fillText(text, lx + 6, y + 14);
+}
+function draw() {
+  sizeCanvas();
+  const W = cv.clientWidth, H = cv.clientHeight, T = target();
+  ctx.fillStyle = "#0b0c0e"; ctx.fillRect(0, 0, W, H);
+  $("empty").style.display = T ? "none" : "grid";
+  if (!T) { $("zoominfo").textContent = ""; return; }
+  if (S.fitted) fit();
+  const v = S.view, A = S.members[S.a], B = S.members[S.b] && S.members[S.b].bmp ? S.members[S.b] : A;   // B may still be loading
+  ctx.imageSmoothingEnabled = !(S.pixel && v.s * devicePixelRatio >= 1.5);
+  ctx.imageSmoothingQuality = "high";
+  const put = (src, p) => { ctx.save(); ctx.beginPath(); ctx.rect(p.x, p.y, p.w, p.h); ctx.clip(); ctx.drawImage(src, p.x + v.x, p.y + v.y, T.w * v.s, T.h * v.s); ctx.restore(); };
+  const ps = panes();
+  const nameA = "A  " + A.label, nameB = "B  " + B.label;
+  if (S.mode === "side" || S.mode === "grid") {
+    ps.forEach((p) => {
+      const m = S.members[p.m]; if (!m || !m.bmp) return;
+      put(aligned(m, T).canvas, p);
+      label(p.x + 8, p.y + 8, (p.tag ? p.tag + "  " : "") + m.label, p.tag === "A" ? "#ffb44d" : p.tag === "B" ? "#5fd3c6" : "#e6e8eb");
+      ctx.strokeStyle = "#2c3038"; ctx.strokeRect(p.x + .5, p.y + .5, p.w - 1, p.h - 1);
+      if (S.mouse && S.mouse.inside) {   // a matching cursor mark in every pane
+        const ix = (S.mouse.px - v.x), iy = (S.mouse.py - v.y);
+        ctx.strokeStyle = "rgba(255,255,255,.7)"; ctx.beginPath();
+        ctx.moveTo(p.x + ix - 8, p.y + iy); ctx.lineTo(p.x + ix + 8, p.y + iy); ctx.moveTo(p.x + ix, p.y + iy - 8); ctx.lineTo(p.x + ix, p.y + iy + 8); ctx.stroke();
+      }
+    });
+  } else {
+    const p = ps[0];
+    if (S.mode === "slider") {
+      put(aligned(A, T).canvas, p);
+      const sx = S.slider * W;
+      ctx.save(); ctx.beginPath(); ctx.rect(sx, 0, W - sx, H); ctx.clip(); put(aligned(B, T).canvas, p); ctx.restore();
+      ctx.fillStyle = "#fff"; ctx.fillRect(sx - 1, 0, 2, H);
+      ctx.beginPath(); ctx.arc(sx, H / 2, 9, 0, 7); ctx.fillStyle = S.sliderLock ? "#6aa8ff" : "#fff"; ctx.fill();
+      label(8, 8, nameA, "#ffb44d"); label(W - 8, 8, nameB, "#5fd3c6", true);
+    } else if (S.mode === "flicker") {
+      put(aligned(A, T).canvas, p); label(8, 8, nameA + "      (Space flips)", "#ffb44d");
+    } else if (S.mode === "onion") {
+      put(aligned(A, T).canvas, p); ctx.globalAlpha = S.opacity; put(aligned(B, T).canvas, p); ctx.globalAlpha = 1;
+      label(8, 8, nameA + "  +  " + B.label + " at " + Math.round(S.opacity * 100) + "%", "#e6e8eb");
+    } else if (S.mode === "diff") {
+      put(diffCanvas(T), p);
+      const d = { heat: "heat map of |A-B|", gray: "|A-B| in grey", signed: "red = B brighter, blue = B darker", thresh: "magenta = changed by more than " + S.thr }[S.dmode];
+      label(8, 8, d + (S.dmode === "thresh" ? "" : ",  x" + S.gain), "#e6e8eb");
+    } else if (S.mode === "ssim") {
+      const c = ssimCanvas(T);
+      if (c) { put(c, p); label(8, 8, "SSIM map: bright = structure differs  (x" + S.sgain + ")", "#e6e8eb"); }
+      else label(8, 8, "measuring SSIM…", "#e6e8eb");
+    }
+  }
+  const pct = Math.round(v.s * devicePixelRatio * 100);
+  $("zoominfo").textContent = pct + "%  ·  " + T.w + " x " + T.h + (A.w !== B.w || A.h !== B.h ? "  ·  sizes differ, the smaller is resampled" : "");
+  drawMag();
+}
+
+// ---------------------------------------------------------------- magnifier: A, B and |A-B| under the cursor
+const MAGPX = 22;
+function drawMag() {
+  const box = $("mag");
+  if (!S.mag || !S.mouse || !S.mouse.inside || !target()) { box.style.display = "none"; return; }
+  const T = target(), v = S.view, ix = Math.floor((S.mouse.px - v.x) / v.s), iy = Math.floor((S.mouse.py - v.y) / v.s);
+  if (!box.firstChild) box.innerHTML = ["A", "B", "|A-B| x4"].map((t) => `<div><canvas width="${MAGPX}" height="${MAGPX}"></canvas><div class="cap">${t}</div></div>`).join("");
+  box.style.display = "flex";
+  const cs = box.querySelectorAll("canvas"), x0 = ix - (MAGPX >> 1), y0 = iy - (MAGPX >> 1);
+  const A = S.members[S.a], B = S.members[S.b] && S.members[S.b].bmp ? S.members[S.b] : A;
+  const grab = (m) => { const c = document.createElement("canvas"); c.width = c.height = MAGPX; c.getContext("2d").drawImage(aligned(m, T).canvas, -x0, -y0); return c; };
+  const ga = grab(A), gb = grab(B);
+  cs[0].getContext("2d").drawImage(ga, 0, 0); cs[1].getContext("2d").drawImage(gb, 0, 0);
+  const da = ga.getContext("2d").getImageData(0, 0, MAGPX, MAGPX).data, db = gb.getContext("2d").getImageData(0, 0, MAGPX, MAGPX).data;
+  const out = new ImageData(MAGPX, MAGPX);
+  for (let j = 0; j < da.length; j += 4) {
+    const d = Math.min(255, Math.max(Math.abs(da[j] - db[j]), Math.abs(da[j + 1] - db[j + 1]), Math.abs(da[j + 2] - db[j + 2])) * 4) | 0;
+    out.data[j] = LUT[d * 3]; out.data[j + 1] = LUT[d * 3 + 1]; out.data[j + 2] = LUT[d * 3 + 2]; out.data[j + 3] = 255;
+  }
+  cs[2].getContext("2d").putImageData(out, 0, 0);
+  const st = $("stage").getBoundingClientRect(), bw = box.offsetWidth || 580, bh = box.offsetHeight || 210;
+  let lx = S.mouse.cx - st.left + 24, ly = S.mouse.cy - st.top + 24;
+  if (lx + bw > st.width) lx = S.mouse.cx - st.left - bw - 24; if (ly + bh > st.height) ly = S.mouse.cy - st.top - bh - 24;
+  box.style.left = Math.max(4, lx) + "px"; box.style.top = Math.max(4, ly) + "px";
+}
+
+// ---------------------------------------------------------------- info panel
+function renderInfo() {
+  const A = S.members[S.a], B = S.members[S.b], el = $("info");
+  if (!A) { el.innerHTML = '<h3>Blink</h3><div class="note">Nothing open yet.</div>'; return; }
+  const who = (m, t, cls) => m ? `<span class="${cls}">${t}</span><div><b>${esc(m.label)}</b>${m.note ? ` <span class="note">· ${esc(m.note)}</span>` : ""}
+     <div class="p">${esc(m.path || m.file?.name || "")}</div><div class="p">${m.w ? m.w + " x " + m.h + " · " + fmtBytes(m.bytes) : "loading…"}</div>
+     ${m.flags ? `<div class="p">server flags: ${esc(m.flags)}</div>` : ""}</div>` : "";
+  let h = `<h3>Images</h3><div class="who">${who(A, "A", "ta")}${S.b !== S.a ? who(B, "B", "tb") : ""}</div>`;
+  const M = S.metrics;
+  if (B && S.a !== S.b) {
+    h += "<h3>Difference</h3>";
+    if (!M) h += '<div class="note">measuring…</div>';
+    else {
+      const ssimTxt = M.ssim === undefined ? "…" : M.ssim.toFixed(4);
+      const verdict = M.mae === 0 ? "identical pixels" : M.ssim > 0.98 ? "near-identical" : M.ssim > 0.9 ? "small changes" : M.ssim > 0.7 ? "clearly different" : "very different";
+      h += `<table>
+        <tr><td>verdict</td><td>${verdict}</td></tr>
+        <tr><td>SSIM</td><td>${ssimTxt} <span class="legend">(1 = same structure)</span></td></tr>
+        <tr><td>PSNR</td><td>${M.psnr === Infinity ? "∞" : M.psnr.toFixed(2) + " dB"} <span class="legend">(higher = closer; 40+ hard to see)</span></td></tr>
+        <tr><td>mean |A-B|</td><td>${M.mae.toFixed(3)} <span class="legend">of 255</span></td></tr>
+        <tr><td>RMS diff</td><td>${M.rmse.toFixed(3)}</td></tr>
+        <tr><td>largest diff</td><td>${M.max}</td></tr>
+        <tr><td>changed &gt; ${M.thrAt}</td><td>${(M.changed * 100).toFixed(2)}% of pixels</td></tr>
+        <tr><td>fine detail</td><td><span class="ta">A ${M.lapA.toFixed(1)}</span> · <span class="tb">B ${M.lapB.toFixed(1)}</span> · B/A ${M.lapA > 0 ? (M.lapB / M.lapA).toFixed(3) : "n/a"}
+          <div class="legend">variance of the Laplacian: more fine detail, edges or noise = higher</div></td></tr>
+        <tr><td>brightness</td><td><span class="ta">A ${M.meanA.toFixed(1)}</span> · <span class="tb">B ${M.meanB.toFixed(1)}</span></td></tr>
+        <tr><td>contrast</td><td><span class="ta">A ${M.stdA.toFixed(1)}</span> · <span class="tb">B ${M.stdB.toFixed(1)}</span> <span class="legend">(luma s.d.)</span></td></tr>
+      </table>
+      <h3>Histogram</h3><canvas id="hist" width="600" height="180"></canvas>
+      <div class="legend">red, green, blue · solid = <span class="ta">A</span>, dashed = <span class="tb">B</span></div>`;
+      if (A.w !== B.w || A.h !== B.h) h += `<div class="note">Compared at ${M.T.w} x ${M.T.h}: the smaller image was resampled up, so its softness counts as difference.</div>`;
+    }
+  }
+  // settings from the PNG metadata, differences highlighted
+  const ra = A.set ? A.set.rows : {}, rb = B && S.a !== S.b && B.set ? B.set.rows : null;
+  const keys = [...new Set([...Object.keys(ra), ...Object.keys(rb || {})])].filter((k) => k !== "Prompt");
+  if (keys.length) {
+    h += `<h3>Settings${rb ? " (differences highlighted)" : ""}</h3><table>`;
+    for (const k of keys) {
+      const va = ra[k] ?? "—", vb = rb ? (rb[k] ?? "—") : null, d = rb && String(va) !== String(vb);
+      h += `<tr class="${d ? "diff" : ""}"><td>${esc(k)}</td><td><span class="ta">${esc(va).replace(/\n/g, "<br>")}</span>${rb ? `<br><span class="tb">${esc(vb).replace(/\n/g, "<br>")}</span>` : ""}</td></tr>`;
+    }
+    h += "</table>";
+  }
+  if (ra.Prompt || (rb && rb.Prompt)) {
+    const same = rb && ra.Prompt === rb.Prompt;
+    h += `<h3>Prompt${rb ? (same ? " (same in both)" : " (differs)") : ""}</h3>`;
+    h += `<details ${rb && !same ? "open" : ""}><summary>${same || !rb ? "show" : "show both"}</summary><pre class="ta">${esc(ra.Prompt || "—")}</pre>${rb && !same ? `<pre class="tb">${esc(rb.Prompt || "—")}</pre>` : ""}</details>`;
+  }
+  if (rb && A.set.graph && B.set.graph) {
+    const fa = flatGraph(A.set.graph), fb = flatGraph(B.set.graph), ks = [...new Set([...Object.keys(fa), ...Object.keys(fb)])].filter((k) => !/\.(text|filename_prefix)$/.test(k) && fa[k] !== fb[k]);
+    h += `<details><summary>every graph input that differs (${ks.length})</summary><table>${ks.slice(0, 150).map((k) =>
+      `<tr><td>${esc(k)}</td><td><span class="ta">${esc(fa[k] ?? "—")}</span><br><span class="tb">${esc(fb[k] ?? "—")}</span></td></tr>`).join("")}</table></details>`;
+  }
+  el.innerHTML = h;
+  if (M && $("hist")) drawHist(M);
+}
+function drawHist(M) {
+  const c = $("hist"), x = c.getContext("2d"), W = c.width, H = c.height;
+  x.clearRect(0, 0, W, H);
+  let peak = 1; for (let i = 0; i < 768; i++) peak = Math.max(peak, M.ha[i], M.hb[i]);
+  const cols = ["#ff6b6b", "#7bd88f", "#6aa8ff"];
+  for (const [hist, dash] of [[M.ha, []], [M.hb, [5, 4]]]) for (let ch = 0; ch < 3; ch++) {
+    x.beginPath(); x.setLineDash(dash); x.strokeStyle = cols[ch]; x.globalAlpha = 0.85; x.lineWidth = 1.5;
+    for (let i = 0; i < 256; i++) { const y = H - 4 - Math.sqrt(hist[ch * 256 + i] / peak) * (H - 10); i ? x.lineTo(i / 255 * W, y) : x.moveTo(0, y); }
+    x.stroke();
+  }
+  x.setLineDash([]); x.globalAlpha = 1;
+}
+
+// ---------------------------------------------------------------- the member strip
+function renderStrip() {
+  const el = $("strip"); el.innerHTML = "";
+  S.members.forEach((m, i) => {
+    const d = document.createElement("div");
+    d.className = "mem" + (i === S.a ? " isA" : "") + (i === S.b && S.b !== S.a ? " isB" : "");
+    d.innerHTML = `<canvas width="144" height="66"></canvas><div class="l">${esc(m.label)}</div><div class="s">${esc(m.note || (m.w ? m.w + " x " + m.h : ""))}</div>` +
+      (i === S.a ? '<span class="badge a">A</span>' : "") + (i === S.b && S.b !== S.a ? '<span class="badge b">B</span>' : "");
+    d.title = (m.path || m.file?.name || "") + "\nclick = A, right-click = B";
+    d.onclick = () => setAB(i, S.b === i ? S.a : S.b);
+    d.oncontextmenu = (e) => { e.preventDefault(); setAB(S.a === i ? S.b : S.a, i); };
+    el.appendChild(d);
+    if (m.bmp) { const c = d.querySelector("canvas"), x = c.getContext("2d"), k = Math.min(144 / m.w, 66 / m.h);
+      x.imageSmoothingQuality = "high"; x.drawImage(m.bmp, (144 - m.w * k) / 2, (66 - m.h * k) / 2, m.w * k, m.h * k); }
+  });
+}
+function setAB(a, b) {
+  const n = S.members.length; if (!n) return;
+  S.a = (a + n) % n; S.b = (b + n) % n;
+  derived.key = ""; renderStrip(); draw(); measure();
+}
+
+// ---------------------------------------------------------------- groups and the side list
+async function loadGroups(fresh) {
+  try { S.data = await (await fetch("/api/groups" + (fresh ? "?fresh=1" : ""))).json(); }
+  catch (e) { S.data = { groups: [], folders: [] }; }
+  renderList();
+}
+function renderChips() {
+  $("chips").innerHTML = KINDS.map(([k, t]) => `<button class="chip ${S.kind === k ? "on" : ""}" data-k="${k}">${t}</button>`).join("");
+  $("chips").querySelectorAll(".chip").forEach((b) => b.onclick = () => { S.kind = b.dataset.k; S.dir = ""; renderChips(); renderList(); });
+}
+function renderList() {
+  const el = $("list"), q = S.query.toLowerCase();
+  $("folderbar").style.display = S.kind === "folders" ? "flex" : "none";
+  if (!S.data) { el.innerHTML = '<div class="fh">loading…</div>'; return; }
+  if (S.kind === "folders") return renderFolders();
+  S.list = S.data.groups.filter((g) => (S.kind === "all" || g.kind === S.kind) && (!q || (g.title + " " + g.folder + " " + g.kind).toLowerCase().includes(q)));
+  let h = "", last = null;
+  S.list.forEach((g, i) => {
+    if (g.folder !== last) { h += `<div class="fh" title="${esc(g.folder)}">${esc(g.folder)}</div>`; last = g.folder; }
+    h += `<div class="gi ${S.group === g ? "cur" : ""}" data-i="${i}"><span class="kind">${g.kind === "parallel" ? "A/B" : g.kind}</span><span class="t" title="${esc(g.title)}">${esc(g.title)}</span><span class="n">${g.members.length}</span></div>`;
+  });
+  el.innerHTML = h || '<div class="fh">nothing matches</div>';
+  el.querySelectorAll(".gi").forEach((d) => d.onclick = () => openGroup(+d.dataset.i));
+  const cur = el.querySelector(".gi.cur"); if (cur) cur.scrollIntoView({ block: "nearest" });
+}
+const joinPath = (d, f) => d.replace(/[\\/]+$/, "") + "\\" + f;
+async function renderFolders() {
+  const el = $("list"), q = S.query.toLowerCase();
+  if (!S.dir) {
+    const fs = S.data.folders.filter((f) => !q || f.label.toLowerCase().includes(q));
+    el.innerHTML = '<div class="fh">folders, newest first</div>' + (fs.length ? fs.map((f) => `<div class="fl" data-d="${esc(f.name)}" title="${esc(f.name)}">📁 <span class="t" style="flex:1">${esc(f.label)}</span><span class="n">${f.count}</span></div>`).join("")
+      : '<div class="fh">no images in the watched folders yet</div>');
+    el.querySelectorAll(".fl").forEach((d) => d.onclick = () => { S.dir = d.dataset.d; S.checked.clear(); renderFolders(); });
+    return;
+  }
+  let r;
+  try { r = await (await fetch("/api/list?dir=" + encodeURIComponent(S.dir))).json(); } catch (e) { r = { error: String(e) }; }
+  if (S.kind !== "folders") return; // the list moved on while this folder loaded
+  if (r.error) { S.dir = ""; return renderFolders(); }
+  S.dir = r.dir; S.up = r.parent;
+  el.innerHTML = (S.note ? `<div class="note2">${esc(S.note)}</div>` : "") + `<div class="fh" title="${esc(r.dir)}">${esc(r.label)} · tick two or more</div>` +
+    (r.subdirs || []).map((s) => `<div class="fl" data-sub="${esc(s)}">📁 ${esc(s)}</div>`).join("") +
+    (r.images || []).filter((f) => !q || f.toLowerCase().includes(q)).map((f) => `<label class="fl"><input type="checkbox" data-f="${esc(f)}" ${S.checked.has(joinPath(S.dir, f).toLowerCase()) ? "checked" : ""}> <span style="flex:1;word-break:break-all">${esc(f)}</span></label>`).join("");
+  S.note = "";
+  el.querySelectorAll("[data-sub]").forEach((d) => d.onclick = () => { S.dir = joinPath(S.dir, d.dataset.sub); renderFolders(); });
+  el.querySelectorAll("input[data-f]").forEach((c) => c.onchange = () => { const p = joinPath(S.dir, c.dataset.f).toLowerCase(); c.checked ? S.checked.set(p, joinPath(S.dir, c.dataset.f)) : S.checked.delete(p); });
+}
+$("upDir").onclick = () => { S.dir = S.up || ""; renderFolders(); };
+$("cmpChecked").onclick = () => {
+  const ps = [...S.checked.values()]; if (ps.length < 2) return;
+  openMembers({ kind: "picked", folder: "picked", title: ps.length + " images" }, ps.map((p) => ({ label: p.split(/[\\/]/).pop().replace(/\.(png|jpe?g|webp)$/i, ""), path: p })));
+};
+async function openGroup(i) {
+  if (i < 0 || i >= S.list.length) return;
+  S.gi = i; const g = S.list[i];
+  openMembers(g, g.members.map((m) => Object.assign({}, m)));
+}
+async function openMembers(g, members) {
+  S.group = g; S.members = members; S.a = 0; S.b = Math.min(1, members.length - 1); S.metrics = null; derived.key = "";
+  S.fitted = true; renderList(); renderStrip(); renderInfo(); draw();
+  ++S.token;   // cancels a measurement still running for the previous group
+  // A and B first, then the rest
+  const order = [S.a, S.b, ...members.map((_, i) => i).filter((i) => i !== S.a && i !== S.b)];
+  for (const i of order) {
+    try { await loadMember(members[i]); } catch (e) { members[i].label += " (failed to load)"; console.error(e); }
+    if (S.members !== members) return;
+    try { renderStrip(); if (i === S.a || i === S.b) { draw(); renderInfo(); } } catch (e) { console.error(e); }
+  }
+  if (S.members === members) measure();
+}
+
+// ---------------------------------------------------------------- input
+function stagePos(e) { const r = cv.getBoundingClientRect(); const p = panes().find((q) => e.clientX - r.left >= q.x && e.clientX - r.left < q.x + q.w && e.clientY - r.top >= q.y && e.clientY - r.top < q.y + q.h) || panes()[0];
+  return { px: e.clientX - r.left - p.x, py: e.clientY - r.top - p.y, cx: e.clientX, cy: e.clientY, sx: e.clientX - r.left, inside: true }; }
+let dragging = null;
+cv.addEventListener("wheel", (e) => { e.preventDefault(); const m = stagePos(e); zoomAt(m.px, m.py, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+cv.addEventListener("mousedown", (e) => { if (e.button !== 0) return; dragging = { x: e.clientX, y: e.clientY }; $("stage").classList.add("drag"); });
+addEventListener("mouseup", () => { dragging = null; $("stage").classList.remove("drag"); });
+cv.addEventListener("mousemove", (e) => {
+  S.mouse = stagePos(e);
+  if (dragging) { S.view.x += e.clientX - dragging.x; S.view.y += e.clientY - dragging.y; dragging = { x: e.clientX, y: e.clientY }; S.fitted = false; }
+  else if (S.mode === "slider" && !S.sliderLock) S.slider = Math.max(0, Math.min(1, S.mouse.sx / cv.clientWidth));
+  draw();
+});
+cv.addEventListener("mouseleave", () => { if (S.mouse) S.mouse.inside = false; draw(); });
+cv.addEventListener("dblclick", () => { S.fitted ? actual() : (fit(), draw()); });
+cv.addEventListener("click", (e) => { if (S.mode === "slider" && Math.abs(S.mouse.sx - S.slider * cv.clientWidth) < 14) { S.sliderLock = !S.sliderLock; $("sliderLock").checked = S.sliderLock; draw(); } });
+addEventListener("resize", () => draw());
+
+function setMode(m) {
+  S.mode = m; localSet("mode", m);
+  $("modes").querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.m === m));
+  document.querySelectorAll(".ctl").forEach((c) => c.classList.toggle("on", c.dataset.for === m));
+  $("thrBox").style.display = S.dmode === "thresh" ? "" : "none";
+  if (S.fitted) fit(); draw();
+}
+$("modes").innerHTML = MODES.map(([m, t], i) => `<button data-m="${m}"><kbd>${i + 1}</kbd>${t}</button>`).join("");
+$("modes").querySelectorAll("button").forEach((b) => b.onclick = () => setMode(b.dataset.m));
+const bind = (id, key, fmt, after) => { const el = $(id); el.oninput = () => { S[key] = el.type === "checkbox" ? el.checked : +el.value || el.value;
+  if ($(id + "V")) $(id + "V").textContent = fmt ? fmt(S[key]) : S[key]; if (after) after(); draw(); }; };
+bind("gain", "gain", (v) => v + "x"); bind("sgain", "sgain", (v) => v + "x"); bind("thr", "thr", null, () => measure());
+bind("opacity", "opacity", (v) => Math.round(v * 100) + "%"); bind("sliderLock", "sliderLock");
+bind("blinkMs", "blinkMs", (v) => v + " ms", () => startBlink()); bind("blink", "blink", null, () => startBlink());
+$("dmode").onchange = () => { S.dmode = $("dmode").value; $("thrBox").style.display = S.dmode === "thresh" ? "" : "none"; draw(); };
+let blinkTimer = null;
+function startBlink() { clearInterval(blinkTimer); if (S.blink && S.mode === "flicker") blinkTimer = setInterval(() => { if (S.mode === "flicker" && S.blink) { swap(); } }, S.blinkMs); }
+function swap() { [S.a, S.b] = [S.b, S.a]; derived.key = ""; renderStrip(); draw(); if (S.metrics) { renderInfo(); } }
+function nextIdx(i, d, skip) { const n = S.members.length; let j = i; do { j = (j + d + n) % n; } while (j === skip && n > 1); return j; }
+$("helpBtn").onclick = () => $("help").style.display = "grid";
+$("help").onclick = () => $("help").style.display = "none";
+$("search").oninput = () => { S.query = $("search").value; renderList(); };
+addEventListener("keydown", (e) => {
+  if (e.target === $("search")) { if (e.key === "Escape" || e.key === "Enter") $("search").blur(); return; }
+  if (e.target.tagName === "INPUT" && e.target.type !== "checkbox" && e.target.type !== "range") return;
+  const k = e.key;
+  if ($("help").style.display === "grid") { if (k === "Escape" || k === "?") $("help").style.display = "none"; return; }
+  if (k >= "1" && k <= "7") { setMode(MODES[+k - 1][0]); startBlink(); }
+  else if (k === " ") { e.preventDefault(); swap(); }
+  else if (k === "ArrowRight" || k === "ArrowLeft") { e.preventDefault(); const d = k === "ArrowRight" ? 1 : -1;
+    e.shiftKey ? setAB(nextIdx(S.a, d, S.b), S.b) : setAB(S.a, nextIdx(S.b, d, S.a)); }
+  else if (k === "ArrowDown" || k === "ArrowUp") { e.preventDefault(); if (S.kind !== "folders") openGroup(Math.max(0, Math.min(S.list.length - 1, S.gi + (k === "ArrowDown" ? 1 : -1)))); }
+  else if (k === "f" || k === "F") { fit(); draw(); }
+  else if (k === "z" || k === "Z") actual();
+  else if (k === "+" || k === "=") zoomAt(cv.clientWidth / 2, cv.clientHeight / 2, 1.25);
+  else if (k === "-" || k === "_") zoomAt(cv.clientWidth / 2, cv.clientHeight / 2, 0.8);
+  else if (k === "m" || k === "M") { S.mag = !S.mag; drawMag(); }
+  else if (k === "p" || k === "P") { S.pixel = !S.pixel; draw(); }
+  else if (k === "l" || k === "L") { S.sliderLock = !S.sliderLock; $("sliderLock").checked = S.sliderLock; draw(); }
+  else if (k === "b" || k === "B") { S.blink = !S.blink; $("blink").checked = S.blink; startBlink(); }
+  else if (k === "]" || k === "[") { const d = k === "]" ? 1 : -1;
+    if (S.mode === "ssim") { S.sgain = Math.max(1, Math.min(20, S.sgain + d)); $("sgain").value = S.sgain; $("sgainV").textContent = S.sgain + "x"; }
+    else { S.gain = Math.max(1, Math.min(32, S.gain + d)); $("gain").value = S.gain; $("gainV").textContent = S.gain + "x"; }
+    draw(); }
+  else if (k === "/") { e.preventDefault(); $("search").focus(); $("search").select(); }
+  else if (k === "Tab") { e.preventDefault(); $("app").classList.toggle("noside"); setTimeout(draw, 0); }
+  else if (k === "i" || k === "I") { $("app").classList.toggle("noinfo"); setTimeout(draw, 0); }
+  else if (k === "r" || k === "R") loadGroups(true);
+  else if (k === "?") $("help").style.display = "grid";
+});
+
+// drag and drop any images from Explorer
+let dragDepth = 0;
+addEventListener("dragenter", (e) => { e.preventDefault(); dragDepth++; $("dropzone").style.display = "grid"; });
+addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; $("dropzone").style.display = "none"; } });
+addEventListener("dragover", (e) => e.preventDefault());
+addEventListener("drop", (e) => {
+  e.preventDefault(); dragDepth = 0; $("dropzone").style.display = "none";
+  const files = [...e.dataTransfer.files].filter((f) => /\.(png|jpe?g|webp)$/i.test(f.name));
+  if (!files.length) return;
+  openMembers({ kind: "dropped", folder: "dropped", title: files.length + " dropped" }, files.map((f) => ({ label: f.name.replace(/\.(png|jpe?g|webp)$/i, ""), file: f })));
+});
+
+// BlinkLoupe's V: show the frame's versions (the original as A, this frame as B), else its folder with it ticked
+const normPath = (p) => String(p || "").replace(/\//g, "\\").toLowerCase();
+window.blinkOpen = async (path) => {
+  await loadGroups(true);
+  const want = normPath(path);
+  const g = S.data.groups.find((g) => g.members.some((m) => normPath(m.path) === want));
+  S.query = ""; $("search").value = "";
+  if (g) {
+    S.kind = "all"; renderChips(); renderList();
+    const k = g.members.findIndex((m) => normPath(m.path) === want);
+    await openGroup(S.list.indexOf(g));
+    if (k > 1) setAB(0, k);
+    return;
+  }
+  const name = String(path).split(/[\\/]/).pop();
+  S.kind = "folders"; S.dir = String(path).slice(0, -name.length - 1);
+  S.checked = new Map([[normPath(path), String(path)]]);
+  S.note = `Nothing to compare ${name} with yet: no re-rolls, versions or A/B folder. Tick other images to compare.`;
+  renderChips(); renderList();
+};
+
+renderChips(); setMode(S.mode); renderInfo();
+(async () => {
+  const open = new URLSearchParams(location.search).get("open");
+  if (open) await window.blinkOpen(open);
+  else await loadGroups(false);
+})();
+</script>
+</body>
+</html>

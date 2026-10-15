@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>BlinkLoupe</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="stage" class="fit">
+    <img id="img" alt="" crossorigin="anonymous" draggable="false">
+    <video id="vid" muted loop playsinline crossorigin="anonymous" hidden></video>
+    <div id="msg"></div>
+  </main>
+
+  <section id="info" hidden></section>
+
+  <footer id="hud" hidden>
+    <div id="hud1"><span id="status"></span><span id="where"></span><span id="comfy"></span></div>
+    <div id="hud2"></div>
+  </footer>
+
+  <div id="toast" hidden></div>
+
+  <div id="veil" hidden>
+    <div id="panel" role="dialog" aria-modal="true"></div>
+  </div>
+
+  <canvas id="probe" width="48" height="48" hidden></canvas>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

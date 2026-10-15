@@ -1,0 +1,307 @@
+{
+ "1": {
+  "class_type": "easy ckptNames",
+  "inputs": {
+   "ckpt_name": "studioPortraitXL_v3.safetensors"
+  }
+ },
+ "2": {
+  "class_type": "easy showAnything",
+  "inputs": {
+   "text": "studioPortraitXL_v3.safetensors",
+   "anything": [
+    "1",
+    0
+   ]
+  }
+ },
+ "3": {
+  "class_type": "CheckpointLoaderSimple",
+  "inputs": {
+   "ckpt_name": [
+    "1",
+    0
+   ]
+  }
+ },
+ "4": {
+  "class_type": "CLIPSetLastLayer",
+  "inputs": {
+   "stop_at_clip_layer": -2,
+   "clip": [
+    "3",
+    1
+   ]
+  }
+ },
+ "5": {
+  "class_type": "easy int",
+  "inputs": {
+   "value": 896
+  }
+ },
+ "6": {
+  "class_type": "easy int",
+  "inputs": {
+   "value": 1152
+  }
+ },
+ "7": {
+  "class_type": "easy int",
+  "inputs": {
+   "value": 30
+  }
+ },
+ "8": {
+  "class_type": "easy int",
+  "inputs": {
+   "value": 1
+  }
+ },
+ "9": {
+  "class_type": "PrimitiveFloat",
+  "inputs": {
+   "value": 5.5
+  }
+ },
+ "10": {
+  "class_type": "Seed (rgthree)",
+  "inputs": {
+   "seed": -1
+  }
+ },
+ "11": {
+  "class_type": "Sampler Selector (Image Saver)",
+  "inputs": {
+   "sampler_name": "dpmpp_2m"
+  }
+ },
+ "12": {
+  "class_type": "Scheduler Selector (Image Saver)",
+  "inputs": {
+   "scheduler": "karras"
+  }
+ },
+ "13": {
+  "class_type": "easy showAnything",
+  "inputs": {
+   "text": "dpmpp_2m",
+   "anything": [
+    "11",
+    1
+   ]
+  }
+ },
+ "14": {
+  "class_type": "easy showAnything",
+  "inputs": {
+   "text": "karras",
+   "anything": [
+    "12",
+    1
+   ]
+  }
+ },
+ "15": {
+  "class_type": "EmptyLatentImage",
+  "inputs": {
+   "width": [
+    "5",
+    0
+   ],
+   "height": [
+    "6",
+    0
+   ],
+   "batch_size": [
+    "8",
+    0
+   ]
+  }
+ },
+ "16": {
+  "class_type": "ImpactWildcardEncode",
+  "inputs": {
+   "wildcard_text": "high detail, natural window light, a ceramicist at her wheel, {clay|stoneware} dust",
+   "populated_text": "high detail, natural window light, a ceramicist at her wheel, clay dust",
+   "mode": "populate",
+   "Select to add LoRA": "Select the LoRA to add to the text",
+   "Select to add Wildcard": "Select the Wildcard to add to the text",
+   "seed": [
+    "10",
+    0
+   ],
+   "model": [
+    "3",
+    0
+   ],
+   "clip": [
+    "4",
+    0
+   ]
+  }
+ },
+ "17": {
+  "class_type": "ImpactWildcardEncode",
+  "inputs": {
+   "wildcard_text": "lowres, jpeg artifacts, extra fingers",
+   "populated_text": "lowres, jpeg artifacts, extra fingers",
+   "mode": "populate",
+   "Select to add LoRA": "Select the LoRA to add to the text",
+   "Select to add Wildcard": "Select the Wildcard to add to the text",
+   "seed": [
+    "10",
+    0
+   ],
+   "model": [
+    "16",
+    0
+   ],
+   "clip": [
+    "16",
+    1
+   ]
+  }
+ },
+ "18": {
+  "class_type": "KSampler",
+  "inputs": {
+   "seed": [
+    "10",
+    0
+   ],
+   "steps": [
+    "7",
+    0
+   ],
+   "cfg": [
+    "9",
+    0
+   ],
+   "sampler_name": [
+    "13",
+    0
+   ],
+   "scheduler": [
+    "14",
+    0
+   ],
+   "denoise": 1,
+   "model": [
+    "17",
+    0
+   ],
+   "positive": [
+    "16",
+    2
+   ],
+   "negative": [
+    "17",
+    2
+   ],
+   "latent_image": [
+    "15",
+    0
+   ]
+  }
+ },
+ "19": {
+  "class_type": "PrimitiveInt",
+  "inputs": {
+   "value": 1
+  }
+ },
+ "20": {
+  "class_type": "ImpactSwitch",
+  "inputs": {
+   "select": [
+    "19",
+    0
+   ],
+   "sel_mode": false,
+   "input1": [
+    "3",
+    2
+   ]
+  }
+ },
+ "21": {
+  "class_type": "VAEDecode",
+  "inputs": {
+   "samples": [
+    "18",
+    0
+   ],
+   "vae": [
+    "20",
+    0
+   ]
+  }
+ },
+ "22": {
+  "class_type": "Image Saver",
+  "inputs": {
+   "filename": "%time_%basemodelname_%seed",
+   "path": "",
+   "extension": "png",
+   "steps": [
+    "7",
+    0
+   ],
+   "cfg": [
+    "9",
+    0
+   ],
+   "modelname": [
+    "1",
+    0
+   ],
+   "sampler_name": [
+    "13",
+    0
+   ],
+   "scheduler_name": [
+    "14",
+    0
+   ],
+   "positive": [
+    "16",
+    3
+   ],
+   "negative": [
+    "17",
+    3
+   ],
+   "seed_value": [
+    "10",
+    0
+   ],
+   "width": [
+    "5",
+    0
+   ],
+   "height": [
+    "6",
+    0
+   ],
+   "lossless_webp": true,
+   "quality_jpeg_or_webp": 100,
+   "optimize_png": false,
+   "counter": 0,
+   "denoise": 1,
+   "clip_skip": 2,
+   "time_format": "%Y-%m-%d-%H%M%S",
+   "save_workflow_as_json": false,
+   "embed_workflow": true,
+   "additional_hashes": "",
+   "download_civitai_data": false,
+   "easy_remix": true,
+   "show_preview": true,
+   "custom": "",
+   "images": [
+    "21",
+    0
+   ]
+  }
+ }
+}
